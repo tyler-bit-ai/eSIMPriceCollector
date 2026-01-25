@@ -3,3 +3,6 @@ japan_page.html
 *.log
 .DS_Store
 .env
+*.csv
+*.png
+*.html
