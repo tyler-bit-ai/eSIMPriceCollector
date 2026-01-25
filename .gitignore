@@ -1,0 +1,5 @@
+node_modules/
+japan_page.html
+*.log
+.DS_Store
+.env
