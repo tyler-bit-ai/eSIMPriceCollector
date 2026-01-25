@@ -1,16 +1,18 @@
 {
   "name": "esimpricecollector",
   "version": "1.0.0",
-  "description": "",
+  "description": "eSIM 가격 비교 크롤러",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["esim", "crawler", "price-comparison"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "playwright": "^1.58.0"
+    "playwright": "^1.58.0",
+    "xlsx": "^0.18.5"
   }
 }

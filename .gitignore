@@ -1,8 +1,11 @@
 node_modules/
-japan_page.html
 *.log
 .DS_Store
 .env
+# Output files
 *.csv
+*.xlsx
+# Debug files
 *.png
 *.html
+japan_page.html
