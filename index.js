@@ -7,17 +7,40 @@ const usimsa = require('./crawlers/usimsa');
 const pindirect = require('./crawlers/pindirect');
 const dosirak = require('./crawlers/dosirak');
 const maaltalk = require('./crawlers/maaltalk');
+const rokebi = require('./crawlers/rokebi');
 
 // 크롤러 목록
 const crawlers = [
   usimsa,
   pindirect,
   dosirak,
-  maaltalk
+  maaltalk,
+  rokebi
 ];
 
 // 크롤링할 국가 목록
 const COUNTRIES = ['일본', '베트남', '필리핀'];
+
+// 데이터 기준 (4일 사용)
+const DATA_CRITERIA_DAYS = 4;
+
+/**
+ * 4일 기준 데이터 필터링
+ */
+function filterBy4Days(data) {
+  return data.filter(item => {
+    // product_name이나 data_amount에 일수 정보가 있는지 확인
+    const text = (item.product_name || '') + ' ' + (item.data_amount || '');
+
+    // 4일 포함 또는 일수 정보 없음 (로밍도깨비는 이미 4일 기준으로 필터링됨)
+    const dayMatch = text.match(/(\d+)일/);
+    if (!dayMatch) {
+      return true; // 일수 정보가 없으면 포함
+    }
+
+    return parseInt(dayMatch[1]) === DATA_CRITERIA_DAYS;
+  });
+}
 
 /**
  * CSV 파일 저장
@@ -58,7 +81,7 @@ function saveToExcel(allData, filename) {
   xlsx.utils.book_append_sheet(workbook, allSheet, '전체');
 
   // 2. 사이트별 시트
-  const sites = ['USIMSA (유심사)', 'PinDirect (핀다이렉트)', 'Dosirak (도시락eSIM)', 'Maaltalk (말톡)'];
+  const sites = ['USIMSA (유심사)', 'PinDirect (핀다이렉트)', 'Dosirak (도시락eSIM)', 'Maaltalk (말톡)', 'Rokebi (로밍도깨비)'];
   sites.forEach(site => {
     const siteData = allData.filter(row => row.product_name.includes(site.split(' ')[0]) ||
                                         (site === 'USIMSA (유심사)' && !row.product_name.includes('핀다이렉트') && !row.product_name.includes('도시락') && !row.product_name.includes('말톡')));
@@ -81,12 +104,22 @@ function saveToExcel(allData, filename) {
 
   // 4. 요약 시트
   const summary = [];
+  // 4일 기준 안내 추가
+  summary.push({
+    '사이트': `※ ${DATA_CRITERIA_DAYS}일 사용 기준`,
+    '국가': '',
+    '상품 수': '',
+    '최저가': '',
+    '최고가': ''
+  });
+  summary.push({}); // 빈 행 추가
+
   sites.forEach(site => {
     COUNTRIES.forEach(country => {
       const siteName = site.split(' ')[0];
       const siteData = allData.filter(row => {
         const isSite = row.product_name.includes(siteName) ||
-                      (siteName === 'USIMSA' && !row.product_name.includes('핀다이렉트') && !row.product_name.includes('도시락') && !row.product_name.includes('말톡'));
+                      (siteName === 'USIMSA' && !row.product_name.includes('핀다이렉트') && !row.product_name.includes('도시락') && !row.product_name.includes('말톡') && !row.product_name.includes('로밍도깨비'));
         return isSite && row.country === country;
       });
 
@@ -116,7 +149,7 @@ function saveToExcel(allData, filename) {
   // 파일 저장
   xlsx.writeFile(workbook, filename);
   console.log(`✅ 엑셀 저장: ${filename}`);
-  console.log(`   - 전체: ${allData.length}개 상품`);
+  console.log(`   - 전체: ${allData.length}개 상품 (${DATA_CRITERIA_DAYS}일 기준)`);
   console.log(`   - 시트: 전체, ${sites.map(s => s.replace(/\s*\(.*\)/, '')).join(', ')}, ${COUNTRIES.join(', ')}, 요약`);
 }
 
@@ -128,7 +161,7 @@ function printResults(allData) {
   console.log('📊 크롤링 결과 요약');
   console.log('='.repeat(60));
 
-  const sites = ['USIMSA', 'PinDirect', 'Dosirak', 'Maaltalk'];
+  const sites = ['USIMSA', 'PinDirect', 'Dosirak', 'Maaltalk', 'Rokebi'];
 
   sites.forEach(site => {
     const siteData = allData.filter(row => row.product_name.includes(site));
@@ -158,6 +191,7 @@ async function main() {
   console.log('🚀 eSIM 가격 비교 크롤러 시작\n');
   console.log(`대상 사이트: ${crawlers.length}개`);
   console.log(`대상 국가: ${COUNTRIES.join(', ')}`);
+  console.log(`데이터 기준: 4일 사용 요금제`);
   console.log('');
 
   const allData = [];
@@ -183,8 +217,14 @@ async function main() {
 
   const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
+  // 4일 기준 필터링
+  console.log(`\n🔍 ${DATA_CRITERIA_DAYS}일 기준 데이터 필터링 중...`);
+  const filteredData = filterBy4Days(allData);
+  console.log(`   원본 데이터: ${allData.length}개`);
+  console.log(`   필터링 후: ${filteredData.length}개`);
+
   // 결과 출력
-  printResults(allData);
+  printResults(filteredData);
 
   // 파일 저장
   console.log(`\n💾 결과 파일 저장 중...`);
@@ -192,17 +232,17 @@ async function main() {
 
   // CSV 저장
   const csvPath = path.join(__dirname, `esim_prices_${timestamp}.csv`);
-  saveToCSV(allData, csvPath);
+  saveToCSV(filteredData, csvPath);
 
   // 엑셀 저장
   const excelPath = path.join(__dirname, `esim_prices_${timestamp}.xlsx`);
-  saveToExcel(allData, excelPath);
+  saveToExcel(filteredData, excelPath);
 
   // 완료 메시지
   console.log(`\n${'='.repeat(60)}`);
   console.log('✅ 모든 작업 완료!');
   console.log(`총 소요 시간: ${duration}초`);
-  console.log(`총 수집 상품: ${allData.length}개`);
+  console.log(`총 수집 상품: ${filteredData.length}개 (${DATA_CRITERIA_DAYS}일 기준)`);
   console.log('='.repeat(60));
 }
 
