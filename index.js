@@ -25,15 +25,25 @@ const COUNTRIES = ['일본', '베트남', '필리핀'];
 const DATA_CRITERIA_DAYS = 4;
 
 /**
- * 4일 기준 데이터 필터링
+ * 4일 기준 데이터 필터링 및 기간 정보 추가
  */
 function filterBy4Days(data) {
-  return data.filter(item => {
-    // product_name이나 data_amount에 일수 정보가 있는지 확인
+  return data.map(item => {
+    // 기간 정보 추출
     const text = (item.product_name || '') + ' ' + (item.data_amount || '');
-
-    // 4일 포함 또는 일수 정보 없음 (로밍도깨비는 이미 4일 기준으로 필터링됨)
     const dayMatch = text.match(/(\d+)일/);
+
+    // validity_period 필드 추가
+    if (dayMatch) {
+      item.validity_period = `${dayMatch[1]}일`;
+    } else if (!item.validity_period) {
+      item.validity_period = `${DATA_CRITERIA_DAYS}일`; // 기본값
+    }
+
+    return item;
+  }).filter(item => {
+    // 4일 기준 필터링
+    const dayMatch = (item.validity_period || '').match(/(\d+)일/);
     if (!dayMatch) {
       return true; // 일수 정보가 없으면 포함
     }
