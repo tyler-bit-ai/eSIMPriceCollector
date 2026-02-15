@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "dashboard": "node dashboard_server.js",
+    "start:dashboard": "node index.js && node dashboard_server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["esim", "crawler", "price-comparison"],
